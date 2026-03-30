@@ -1,0 +1,1404 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SQL Indexes – The Complete Guide</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;600;700&family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,700;0,9..144,900;1,9..144,400&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0a0f;
+    --bg2: #111118;
+    --bg3: #1a1a24;
+    --border: #2a2a3a;
+    --accent: #6ee7b7;
+    --accent2: #f59e0b;
+    --accent3: #818cf8;
+    --accent4: #f87171;
+    --text: #e2e8f0;
+    --muted: #94a3b8;
+    --code-bg: #0d1117;
+    --good: #34d399;
+    --bad: #f87171;
+    --warn: #fbbf24;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 14px;
+    line-height: 1.8;
+    overflow-x: hidden;
+  }
+
+  /* HERO */
+  .hero {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+    position: relative;
+    padding: 60px 20px;
+    background: radial-gradient(ellipse 80% 60% at 50% 0%, #1a1a3e 0%, var(--bg) 70%);
+    overflow: hidden;
+  }
+  .hero::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: repeating-linear-gradient(
+      0deg, transparent, transparent 60px,
+      rgba(110,231,183,0.03) 60px, rgba(110,231,183,0.03) 61px
+    ),
+    repeating-linear-gradient(
+      90deg, transparent, transparent 80px,
+      rgba(110,231,183,0.03) 80px, rgba(110,231,183,0.03) 81px
+    );
+    pointer-events: none;
+  }
+  .hero-badge {
+    font-size: 11px;
+    letter-spacing: 0.25em;
+    color: var(--accent);
+    border: 1px solid rgba(110,231,183,0.3);
+    padding: 6px 16px;
+    border-radius: 100px;
+    margin-bottom: 32px;
+    text-transform: uppercase;
+    background: rgba(110,231,183,0.05);
+  }
+  .hero h1 {
+    font-family: 'Fraunces', serif;
+    font-size: clamp(48px, 8vw, 96px);
+    font-weight: 900;
+    line-height: 1.0;
+    letter-spacing: -2px;
+    margin-bottom: 24px;
+  }
+  .hero h1 span { color: var(--accent); font-style: italic; }
+  .hero-sub {
+    font-size: 16px;
+    color: var(--muted);
+    max-width: 540px;
+    line-height: 1.7;
+    margin-bottom: 48px;
+    font-family: 'Fraunces', serif;
+    font-weight: 300;
+    font-style: italic;
+  }
+  .hero-stats {
+    display: flex;
+    gap: 48px;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  .stat { text-align: center; }
+  .stat-num {
+    font-size: 28px;
+    font-weight: 700;
+    color: var(--accent);
+    display: block;
+  }
+  .stat-label { font-size: 11px; color: var(--muted); letter-spacing: 0.1em; text-transform: uppercase; }
+
+  /* NAV */
+  .toc {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    background: rgba(10,10,15,0.95);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--border);
+    padding: 0 40px;
+    overflow-x: auto;
+    white-space: nowrap;
+  }
+  .toc-inner {
+    display: inline-flex;
+    gap: 0;
+    max-width: 1200px;
+    margin: 0 auto;
+  }
+  .toc a {
+    display: inline-block;
+    padding: 16px 20px;
+    color: var(--muted);
+    text-decoration: none;
+    font-size: 12px;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    transition: color 0.2s;
+    border-bottom: 2px solid transparent;
+  }
+  .toc a:hover { color: var(--accent); border-bottom-color: var(--accent); }
+
+  /* LAYOUT */
+  .container { max-width: 900px; margin: 0 auto; padding: 80px 24px; }
+  .section { margin-bottom: 100px; }
+
+  /* SECTION HEADERS */
+  .section-num {
+    font-size: 11px;
+    letter-spacing: 0.3em;
+    color: var(--accent);
+    text-transform: uppercase;
+    margin-bottom: 12px;
+    display: block;
+  }
+  h2 {
+    font-family: 'Fraunces', serif;
+    font-size: clamp(32px, 5vw, 52px);
+    font-weight: 900;
+    line-height: 1.1;
+    letter-spacing: -1px;
+    margin-bottom: 24px;
+    color: var(--text);
+  }
+  h2 em { color: var(--accent); font-style: italic; }
+  h3 {
+    font-family: 'Fraunces', serif;
+    font-size: 24px;
+    font-weight: 700;
+    margin: 48px 0 16px;
+    color: var(--accent3);
+  }
+  h4 {
+    font-size: 13px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--accent2);
+    margin: 32px 0 12px;
+    font-weight: 600;
+  }
+  p { color: var(--muted); margin-bottom: 16px; line-height: 1.9; }
+  p strong { color: var(--text); font-weight: 600; }
+
+  /* CALLOUT BOXES */
+  .callout {
+    border-radius: 8px;
+    padding: 20px 24px;
+    margin: 24px 0;
+    border-left: 3px solid;
+    background: var(--bg2);
+  }
+  .callout.info { border-color: var(--accent3); }
+  .callout.good { border-color: var(--good); }
+  .callout.bad { border-color: var(--bad); }
+  .callout.warn { border-color: var(--warn); }
+  .callout-title {
+    font-size: 11px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    font-weight: 700;
+    margin-bottom: 8px;
+  }
+  .callout.info .callout-title { color: var(--accent3); }
+  .callout.good .callout-title { color: var(--good); }
+  .callout.bad .callout-title { color: var(--bad); }
+  .callout.warn .callout-title { color: var(--warn); }
+  .callout p { margin: 0; font-size: 13px; }
+
+  /* CODE BLOCKS */
+  .code-block {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    margin: 20px 0;
+    overflow: hidden;
+  }
+  .code-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 16px;
+    background: var(--bg3);
+    border-bottom: 1px solid var(--border);
+  }
+  .code-lang {
+    font-size: 10px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--accent);
+    font-weight: 700;
+  }
+  .code-label { font-size: 11px; color: var(--muted); }
+  pre {
+    padding: 24px;
+    overflow-x: auto;
+    line-height: 1.7;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+  }
+  .kw { color: #ff79c6; font-weight: 600; }
+  .kw2 { color: var(--accent3); }
+  .fn { color: var(--accent2); }
+  .str { color: var(--good); }
+  .num { color: #bd93f9; }
+  .cmt { color: #6272a4; font-style: italic; }
+  .tbl { color: var(--accent); font-weight: 600; }
+  .col { color: var(--text); }
+  .op { color: var(--accent2); }
+
+  /* COMPARISON TABLE */
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 24px 0;
+    font-size: 13px;
+  }
+  th {
+    text-align: left;
+    padding: 12px 16px;
+    background: var(--bg3);
+    border-bottom: 2px solid var(--border);
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--accent);
+    font-weight: 700;
+  }
+  td {
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border);
+    color: var(--muted);
+    vertical-align: top;
+  }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: rgba(255,255,255,0.02); }
+  td.yes { color: var(--good); font-weight: 600; }
+  td.no { color: var(--bad); font-weight: 600; }
+  td.meh { color: var(--warn); font-weight: 600; }
+  td strong { color: var(--text); }
+
+  /* ANALOGY BOX */
+  .analogy {
+    background: linear-gradient(135deg, rgba(129,140,248,0.08), rgba(110,231,183,0.05));
+    border: 1px solid rgba(129,140,248,0.2);
+    border-radius: 12px;
+    padding: 28px 32px;
+    margin: 32px 0;
+    position: relative;
+  }
+  .analogy::before {
+    content: '💡';
+    position: absolute;
+    top: -14px;
+    left: 24px;
+    font-size: 24px;
+    background: var(--bg);
+    padding: 0 8px;
+  }
+  .analogy p { color: var(--text); font-style: italic; font-family: 'Fraunces', serif; font-size: 16px; line-height: 1.7; margin: 0; }
+
+  /* PROS/CONS GRID */
+  .procon {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin: 24px 0;
+  }
+  .pro-box, .con-box {
+    border-radius: 8px;
+    padding: 20px;
+    background: var(--bg2);
+  }
+  .pro-box { border: 1px solid rgba(52,211,153,0.2); }
+  .con-box { border: 1px solid rgba(248,113,113,0.2); }
+  .pro-box h5 { color: var(--good); margin-bottom: 12px; font-size: 12px; letter-spacing: 0.15em; text-transform: uppercase; }
+  .con-box h5 { color: var(--bad); margin-bottom: 12px; font-size: 12px; letter-spacing: 0.15em; text-transform: uppercase; }
+  .pro-box li, .con-box li { color: var(--muted); font-size: 13px; margin-left: 16px; margin-bottom: 6px; }
+
+  /* INDEX TYPE CARDS */
+  .type-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    gap: 16px;
+    margin: 32px 0;
+  }
+  .type-card {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 24px;
+    transition: border-color 0.2s, transform 0.2s;
+    cursor: default;
+  }
+  .type-card:hover { border-color: var(--accent3); transform: translateY(-2px); }
+  .type-icon { font-size: 28px; margin-bottom: 12px; display: block; }
+  .type-name { font-size: 13px; font-weight: 700; color: var(--text); margin-bottom: 6px; letter-spacing: 0.05em; text-transform: uppercase; }
+  .type-desc { font-size: 12px; color: var(--muted); line-height: 1.6; }
+
+  /* PERF METER */
+  .perf-bar {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin: 8px 0;
+  }
+  .perf-label { width: 120px; font-size: 12px; color: var(--muted); flex-shrink: 0; }
+  .perf-track { flex: 1; height: 8px; background: var(--bg3); border-radius: 100px; overflow: hidden; }
+  .perf-fill { height: 100%; border-radius: 100px; transition: width 1s; }
+  .perf-val { width: 36px; font-size: 12px; color: var(--accent); text-align: right; flex-shrink: 0; }
+
+  /* SCENARIO CARDS */
+  .scenario {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 28px 32px;
+    margin: 24px 0;
+  }
+  .scenario-tag {
+    display: inline-block;
+    padding: 4px 12px;
+    border-radius: 100px;
+    font-size: 10px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    font-weight: 700;
+    margin-bottom: 16px;
+  }
+  .tag-use { background: rgba(110,231,183,0.1); color: var(--good); }
+  .tag-avoid { background: rgba(248,113,113,0.1); color: var(--bad); }
+  .tag-interview { background: rgba(245,158,11,0.1); color: var(--accent2); }
+  .scenario h4 { margin-top: 0; margin-bottom: 12px; }
+
+  /* INTERVIEW SECTION */
+  .qa-block {
+    border-bottom: 1px solid var(--border);
+    padding: 28px 0;
+  }
+  .qa-block:last-child { border-bottom: none; }
+  .question {
+    font-family: 'Fraunces', serif;
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--accent2);
+    margin-bottom: 12px;
+    padding-left: 24px;
+    position: relative;
+  }
+  .question::before {
+    content: 'Q';
+    position: absolute;
+    left: 0;
+    color: var(--accent2);
+    font-weight: 900;
+  }
+  .answer {
+    padding-left: 24px;
+    color: var(--muted);
+    font-size: 13px;
+    line-height: 1.8;
+    position: relative;
+  }
+  .answer::before {
+    content: 'A';
+    position: absolute;
+    left: 0;
+    color: var(--good);
+    font-weight: 900;
+    font-family: 'Fraunces', serif;
+    font-size: 16px;
+  }
+
+  /* CHEATSHEET */
+  .cheat-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin: 24px 0;
+  }
+  .cheat-card {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 20px;
+  }
+  .cheat-card h5 { color: var(--accent3); font-size: 12px; letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 12px; }
+  .cheat-card li { color: var(--muted); font-size: 12px; margin-left: 16px; margin-bottom: 5px; }
+  .cheat-card li span { color: var(--accent); }
+
+  /* DIVIDER */
+  .divider {
+    border: none;
+    border-top: 1px solid var(--border);
+    margin: 48px 0;
+  }
+
+  /* FOOTER */
+  footer {
+    text-align: center;
+    padding: 60px 24px;
+    border-top: 1px solid var(--border);
+    color: var(--muted);
+    font-size: 12px;
+    background: var(--bg2);
+  }
+  footer strong { color: var(--accent); }
+
+  @media (max-width: 600px) {
+    .procon, .cheat-grid { grid-template-columns: 1fr; }
+    .toc a { padding: 14px 12px; font-size: 10px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="hero-badge">Complete Reference Guide · Interview Ready</div>
+  <h1>SQL<br><span>Indexes</span></h1>
+  <p class="hero-sub">Everything you need to know — from fundamentals to production tuning, with real examples and interview answers.</p>
+  <div class="hero-stats">
+    <div class="stat"><span class="stat-num">7</span><span class="stat-label">Index Types</span></div>
+    <div class="stat"><span class="stat-num">30+</span><span class="stat-label">SQL Examples</span></div>
+    <div class="stat"><span class="stat-num">15+</span><span class="stat-label">Interview Q&amp;As</span></div>
+    <div class="stat"><span class="stat-num">∞</span><span class="stat-label">Query Speed</span></div>
+  </div>
+</section>
+
+<!-- NAV -->
+<nav class="toc">
+  <div class="toc-inner">
+    <a href="#what">What &amp; Why</a>
+    <a href="#how">How It Works</a>
+    <a href="#types">Types</a>
+    <a href="#syntax">Syntax</a>
+    <a href="#when">When to Use</a>
+    <a href="#avoid">Pitfalls</a>
+    <a href="#composite">Composite</a>
+    <a href="#covering">Covering</a>
+    <a href="#explain">EXPLAIN</a>
+    <a href="#real">Real World</a>
+    <a href="#interview">Interview</a>
+    <a href="#cheatsheet">Cheatsheet</a>
+  </div>
+</nav>
+
+<div class="container">
+
+  <!-- 1. WHAT IS AN INDEX -->
+  <section class="section" id="what">
+    <span class="section-num">01 · Foundation</span>
+    <h2>What is an <em>Index</em>?</h2>
+
+    <div class="analogy">
+      <p>An index is like the index at the back of a textbook. Instead of reading every page to find "photosynthesis", you flip to the index, see "page 247", and jump directly there. Without it, you'd scan every single page — that's a <strong>full table scan</strong>.</p>
+    </div>
+
+    <p>A database index is a <strong>separate data structure</strong> that stores a sorted copy of selected column values alongside pointers to the actual row locations on disk. This makes finding rows dramatically faster — at the cost of extra storage and slightly slower writes.</p>
+
+    <h3>Without an Index</h3>
+    <div class="code-block">
+      <div class="code-header"><span class="code-lang">SQL</span><span class="code-label">Full Table Scan — O(n)</span></div>
+      <pre><span class="cmt">-- Table: users (10 million rows)</span>
+<span class="kw">SELECT</span> * <span class="kw">FROM</span> <span class="tbl">users</span> <span class="kw">WHERE</span> <span class="col">email</span> <span class="op">=</span> <span class="str">'alice@example.com'</span>;
+<span class="cmt">-- 🐌 DB scans ALL 10 million rows one-by-one
+-- Time: ~8 seconds on spinning disk</span></pre>
+    </div>
+
+    <h3>With an Index</h3>
+    <div class="code-block">
+      <div class="code-header"><span class="code-lang">SQL</span><span class="code-label">Index Lookup — O(log n)</span></div>
+      <pre><span class="cmt">-- Create index on email column</span>
+<span class="kw">CREATE INDEX</span> <span class="fn">idx_users_email</span> <span class="kw">ON</span> <span class="tbl">users</span>(<span class="col">email</span>);
+
+<span class="kw">SELECT</span> * <span class="kw">FROM</span> <span class="tbl">users</span> <span class="kw">WHERE</span> <span class="col">email</span> <span class="op">=</span> <span class="str">'alice@example.com'</span>;
+<span class="cmt">-- ⚡ DB traverses B-tree: ~23 comparisons (log₂ 10M)
+-- Time: ~0.1ms</span></pre>
+    </div>
+
+    <div class="callout good">
+      <div class="callout-title">✅ The Payoff</div>
+      <p>10,000,000 rows → ~23 comparisons instead of 10,000,000. That's a <strong>400,000× speedup</strong> in the best case.</p>
+    </div>
+  </section>
+
+  <!-- 2. HOW IT WORKS -->
+  <section class="section" id="how">
+    <span class="section-num">02 · Internals</span>
+    <h2>How <em>Indexes</em> Work</h2>
+
+    <p>Most SQL databases use a <strong>B-Tree (Balanced Tree)</strong> as the default index structure. Here's what that means:</p>
+
+    <div class="code-block">
+      <div class="code-header"><span class="code-lang">Diagram</span><span class="code-label">B-Tree Structure for idx_users_email</span></div>
+      <pre><span class="cmt">                    [Root Node]
+                    ["m@.." | "r@.."]
+                   /        |        \
+          [Leaf A]       [Leaf B]       [Leaf C]
+       a@.. → row3    m@.. → row7    r@.. → row1
+       c@.. → row9    p@.. → row2    z@.. → row5
+       k@.. → row4    q@.. → row8
+
+Each leaf holds:  (index_key_value → physical row pointer)
+</span></pre>
+    </div>
+
+    <h3>Step-by-Step Lookup</h3>
+    <div class="code-block">
+      <div class="code-header"><span class="code-lang">Process</span><span class="code-label">Finding email = 'p@example.com'</span></div>
+      <pre><span class="cmt">Step 1:</span> Read Root Node  → "p" > "m" AND "p" < "r"  → go to Leaf B
+<span class="cmt">Step 2:</span> Read Leaf B     → found "p@.." → pointer = row2
+<span class="cmt">Step 3:</span> Fetch row2 from disk
+
+<span class="cmt">Total disk reads: 3  (vs 10,000,000 for full scan)</span></pre>
+    </div>
+
+    <h3>Physical Data Structures Used</h3>
+    <table>
+      <tr>
+        <th>Structure</th><th>Used For</th><th>Lookup</th><th>Range Scan</th><th>DB Examples</th>
+      </tr>
+      <tr>
+        <td><strong>B-Tree</strong></td>
+        <td>Default index</td>
+        <td class="yes">O(log n)</td>
+        <td class="yes">Excellent</td>
+        <td>MySQL, Postgres, SQL Server</td>
+      </tr>
+      <tr>
+        <td><strong>Hash</strong></td>
+        <td>Equality only</td>
+        <td class="yes">O(1)</td>
+        <td class="bad">None</td>
+        <td>PostgreSQL (explicit)</td>
+      </tr>
+      <tr>
+        <td><strong>GiST / GIN</strong></td>
+        <td>Full-text, JSON, Geo</td>
+        <td class="meh">Varies</td>
+        <td class="meh">Varies</td>
+        <td>PostgreSQL</td>
+      </tr>
+      <tr>
+        <td><strong>Bitmap</strong></td>
+        <td>Low-cardinality cols</td>
+        <td class="good">O(1)</td>
+        <td class="yes">Good</td>
+        <td>Oracle, Postgres (internal)</td>
+      </tr>
+    </table>
+  </section>
+
+  <!-- 3. INDEX TYPES -->
+  <section class="section" id="types">
+    <span class="section-num">03 · Taxonomy</span>
+    <h2>Types of <em>Indexes</em></h2>
+
+    <div class="type-grid">
+      <div class="type-card">
+        <span class="type-icon">🔑</span>
+        <div class="type-name">Primary Index</div>
+        <div class="type-desc">Auto-created on PRIMARY KEY. Rows are physically stored in this order. Only one per table.</div>
+      </div>
+      <div class="type-card">
+        <span class="type-icon">🔗</span>
+        <div class="type-name">Unique Index</div>
+        <div class="type-desc">Enforces uniqueness + speeds up lookups. Created implicitly by UNIQUE constraint.</div>
+      </div>
+      <div class="type-card">
+        <span class="type-icon">📋</span>
+        <div class="type-name">Non-Unique Index</div>
+        <div class="type-desc">Standard index on any column. Speeds up queries, allows duplicate values.</div>
+      </div>
+      <div class="type-card">
+        <span class="type-icon">🧩</span>
+        <div class="type-name">Composite Index</div>
+        <div class="type-desc">Index on 2+ columns. Column order matters! Left-prefix rule applies.</div>
+      </div>
+      <div class="type-card">
+        <span class="type-icon">📦</span>
+        <div class="type-name">Covering Index</div>
+        <div class="type-desc">Includes all columns a query needs — eliminates table lookups entirely.</div>
+      </div>
+      <div class="type-card">
+        <span class="type-icon">🔍</span>
+        <div class="type-name">Full-Text Index</div>
+        <div class="type-desc">For MATCH...AGAINST searches on text content. Not a simple B-tree.</div>
+      </div>
+      <div class="type-card">
+        <span class="type-icon">🌐</span>
+        <div class="type-name">Spatial Index</div>
+        <div class="type-desc">For GIS / geographic data. Uses R-Tree structure for location queries.</div>
+      </div>
+      <div class="type-card">
+        <span class="type-icon">⚙️</span>
+        <div class="type-name">Filtered / Partial</div>
+        <div class="type-desc">Index only a subset of rows using a WHERE clause. Smaller &amp; faster.</div>
+      </div>
+    </div>
+
+    <h3>1. Primary Index (Clustered)</h3>
+    <div class="code-block">
+      <div class="code-header"><span class="code-lang">SQL</span><span class="code-label">Created automatically with PRIMARY KEY</span></div>
+      <pre><span class="kw">CREATE TABLE</span> <span class="tbl">orders</span> (
+  <span class="col">order_id</span>   <span class="kw2">INT</span>          <span class="kw">NOT NULL AUTO_INCREMENT</span>,
+  <span class="col">user_id</span>    <span class="kw2">INT</span>          <span class="kw">NOT NULL</span>,
+  <span class="col">total</span>      <span class="kw2">DECIMAL(10,2)</span>,
+  <span class="col">created_at</span> <span class="kw2">DATETIME</span>,
+  <span class="kw">PRIMARY KEY</span> (<span class="col">order_id</span>)  <span class="cmt">-- Auto-creates clustered index</span>
+);
+<span class="cmt">-- Rows on disk are physically sorted by order_id</span>
+<span class="cmt">-- Range scan on order_id is extremely fast</span></pre>
+    </div>
+
+    <h3>2. Unique Index</h3>
+    <div class="code-block">
+      <div class="code-header"><span class="code-lang">SQL</span><span class="code-label">Enforce uniqueness + performance</span></div>
+      <pre><span class="cmt">-- Option A: via constraint</span>
+<span class="kw">ALTER TABLE</span> <span class="tbl">users</span> <span class="kw">ADD CONSTRAINT</span> <span class="fn">uq_email</span> <span class="kw">UNIQUE</span>(<span class="col">email</span>);
+
+<span class="cmt">-- Option B: explicit unique index</span>
+<span class="kw">CREATE UNIQUE INDEX</span> <span class="fn">idx_users_email</span> <span class="kw">ON</span> <span class="tbl">users</span>(<span class="col">email</span>);
+
+<span class="cmt">-- Allows NULLs (multiple NULLs permitted in most DBs)
+-- Duplicate insert → ERROR: Duplicate entry</span></pre>
+    </div>
+
+    <h3>3. Regular (Non-Unique) Index</h3>
+    <div class="code-block">
+      <div class="code-header"><span class="code-lang">SQL</span><span class="code-label">Speed up frequent lookups</span></div>
+      <pre><span class="cmt">-- Index on foreign key column (very common pattern)</span>
+<span class="kw">CREATE INDEX</span> <span class="fn">idx_orders_user_id</span> <span class="kw">ON</span> <span class="tbl">orders</span>(<span class="col">user_id</span>);
+
+<span class="cmt">-- Now this JOIN is fast:</span>
+<span class="kw">SELECT</span> o.* <span class="kw">FROM</span> <span class="tbl">orders</span> o
+<span class="kw">JOIN</span> <span class="tbl">users</span> u <span class="kw">ON</span> o.<span class="col">user_id</span> <span class="op">=</span> u.<span class="col">id</span>
+<span class="kw">WHERE</span> u.<span class="col">id</span> <span class="op">=</span> <span class="num">42</span>;
+<span class="cmt">-- Without idx_orders_user_id: full scan of orders table!</span></pre>
+    </div>
+
+    <h3>4. Partial / Filtered Index</h3>
+    <div class="code-block">
+      <div class="code-header"><span class="code-lang">PostgreSQL</span><span class="code-label">Index only relevant rows — smaller &amp; faster</span></div>
+      <pre><span class="cmt">-- Use case: 95% of orders are 'completed', queries only hit 'pending'</span>
+<span class="kw">CREATE INDEX</span> <span class="fn">idx_pending_orders</span> <span class="kw">ON</span> <span class="tbl">orders</span>(<span class="col">created_at</span>)
+<span class="kw">WHERE</span> <span class="col">status</span> <span class="op">=</span> <span class="str">'pending'</span>;
+
+<span class="cmt">-- This query hits the partial index (fast + small index):</span>
+<span class="kw">SELECT</span> * <span class="kw">FROM</span> <span class="tbl">orders</span>
+<span class="kw">WHERE</span> <span class="col">status</span> <span class="op">=</span> <span class="str">'pending'</span>
+  <span class="kw">AND</span> <span class="col">created_at</span> <span class="op">></span> <span class="fn">NOW</span>() <span class="op">-</span> <span class="kw">INTERVAL</span> <span class="str">'7 days'</span>;
+
+<span class="cmt">-- Index size: maybe 5% of a full index on the same column</span></pre>
+    </div>
+
+    <h3>5. Full-Text Index</h3>
+    <div class="code-block">
+      <div class="code-header"><span class="code-lang">MySQL</span><span class="code-label">Search within text content</span></div>
+      <pre><span class="kw">ALTER TABLE</span> <span class="tbl">articles</span>
+<span class="kw">ADD FULLTEXT INDEX</span> <span class="fn">ft_article_content</span>(<span class="col">title</span>, <span class="col">body</span>);
+
+<span class="cmt">-- Natural language search</span>
+<span class="kw">SELECT</span> *, <span class="fn">MATCH</span>(<span class="col">title</span>, <span class="col">body</span>) <span class="kw">AGAINST</span>(<span class="str">'database optimization'</span>) <span class="kw">AS</span> relevance
+<span class="kw">FROM</span> <span class="tbl">articles</span>
+<span class="kw">WHERE</span> <span class="fn">MATCH</span>(<span class="col">title</span>, <span class="col">body</span>) <span class="kw">AGAINST</span>(<span class="str">'database optimization'</span> <span class="kw">IN NATURAL LANGUAGE MODE</span>)
+<span class="kw">ORDER BY</span> relevance <span class="kw">DESC</span>;
+
+<span class="cmt">-- Boolean mode with operators</span>
+<span class="kw">WHERE</span> <span class="fn">MATCH</span>(<span class="col">title</span>, <span class="col">body</span>) <span class="kw">AGAINST</span>(<span class="str">'+database -nosql optimization*'</span> <span class="kw">IN BOOLEAN MODE</span>);</pre>
+    </div>
+  </section>
+
+  <!-- 4. SYNTAX -->
+  <section class="section" id="syntax">
+    <span class="section-num">04 · Syntax Reference</span>
+    <h2>Create, Drop &amp; <em>Manage</em></h2>
+
+    <h3>Creating Indexes</h3>
+    <div class="code-block">
+      <div class="code-header"><span class="code-lang">SQL</span><span class="code-label">All creation patterns</span></div>
+      <pre><span class="cmt">-- Basic index</span>
+<span class="kw">CREATE INDEX</span> <span class="fn">idx_name</span> <span class="kw">ON</span> <span class="tbl">table_name</span>(<span class="col">column_name</span>);
+
+<span class="cmt">-- Unique index</span>
+<span class="kw">CREATE UNIQUE INDEX</span> <span class="fn">idx_name</span> <span class="kw">ON</span> <span class="tbl">table_name</span>(<span class="col">column_name</span>);
+
+<span class="cmt">-- Composite index (column order matters!)</span>
+<span class="kw">CREATE INDEX</span> <span class="fn">idx_name</span> <span class="kw">ON</span> <span class="tbl">table_name</span>(<span class="col">col1</span>, <span class="col">col2</span>, <span class="col">col3</span>);
+
+<span class="cmt">-- Inline during table creation</span>
+<span class="kw">CREATE TABLE</span> <span class="tbl">products</span> (
+  <span class="col">id</span>         <span class="kw2">INT PRIMARY KEY</span>,
+  <span class="col">sku</span>        <span class="kw2">VARCHAR(50)</span> <span class="kw">UNIQUE</span>,
+  <span class="col">category</span>   <span class="kw2">VARCHAR(50)</span>,
+  <span class="col">price</span>      <span class="kw2">DECIMAL(10,2)</span>,
+  <span class="kw">INDEX</span> <span class="fn">idx_category</span>(<span class="col">category</span>),      <span class="cmt">-- inline index</span>
+  <span class="kw">INDEX</span> <span class="fn">idx_cat_price</span>(<span class="col">category</span>, <span class="col">price</span>) <span class="cmt">-- composite inline</span>
+);
+
+<span class="cmt">-- PostgreSQL: CONCURRENTLY (no table lock!)</span>
+<span class="kw">CREATE INDEX CONCURRENTLY</span> <span class="fn">idx_users_city</span> <span class="kw">ON</span> <span class="tbl">users</span>(<span class="col">city</span>);
+<span class="cmt">-- Takes longer but doesn't block reads/writes. Use in production!</span></pre>
+    </div>
+
+    <h3>Dropping Indexes</h3>
+    <div class="code-block">
+      <div class="code-header"><span class="code-lang">SQL</span><span class="code-label">Remove indexes</span></div>
+      <pre><span class="cmt">-- MySQL</span>
+<span class="kw">DROP INDEX</span> <span class="fn">idx_users_email</span> <span class="kw">ON</span> <span class="tbl">users</span>;
+<span class="kw">ALTER TABLE</span> <span class="tbl">users</span> <span class="kw">DROP INDEX</span> <span class="fn">idx_users_email</span>;
+
+<span class="cmt">-- PostgreSQL / SQL Server</span>
+<span class="kw">DROP INDEX</span> <span class="fn">idx_users_email</span>;
+<span class="kw">DROP INDEX IF EXISTS</span> <span class="fn">idx_users_email</span>; <span class="cmt">-- safe version</span></pre>
+    </div>
+
+    <h3>Viewing Existing Indexes</h3>
+    <div class="code-block">
+      <div class="code-header"><span class="code-lang">SQL</span><span class="code-label">Inspect indexes</span></div>
+      <pre><span class="cmt">-- MySQL</span>
+<span class="kw">SHOW INDEXES FROM</span> <span class="tbl">users</span>;
+<span class="kw">SHOW INDEX FROM</span> <span class="tbl">orders</span>;
+
+<span class="cmt">-- PostgreSQL</span>
+<span class="kw">SELECT</span> indexname, indexdef
+<span class="kw">FROM</span> pg_indexes
+<span class="kw">WHERE</span> tablename <span class="op">=</span> <span class="str">'users'</span>;
+
+<span class="cmt">-- SQL Server</span>
+<span class="kw">SELECT</span> name, type_desc, is_unique
+<span class="kw">FROM</span> sys.indexes
+<span class="kw">WHERE</span> object_id <span class="op">=</span> <span class="fn">OBJECT_ID</span>(<span class="str">'users'</span>);</pre>
+    </div>
+  </section>
+
+  <!-- 5. WHEN TO USE -->
+  <section class="section" id="when">
+    <span class="section-num">05 · Strategy</span>
+    <h2>When to <em>Use</em> Indexes</h2>
+
+    <div class="callout info">
+      <div class="callout-title">🎯 The Rule of Thumb</div>
+      <p>Index columns that appear in <strong>WHERE, JOIN ON, ORDER BY, or GROUP BY</strong> clauses — and only if those queries run frequently.</p>
+    </div>
+
+    <h3>✅ Good Candidates for Indexing</h3>
+
+    <div class="scenario">
+      <span class="scenario-tag tag-use">Use Index</span>
+      <h4>High-Cardinality WHERE Columns</h4>
+      <div class="code-block">
+        <div class="code-header"><span class="code-lang">SQL</span><span class="code-label">email, user_id, order_id — many unique values</span></div>
+        <pre><span class="cmt">-- email has millions of unique values → index is very selective</span>
+<span class="kw">CREATE INDEX</span> <span class="fn">idx_users_email</span> <span class="kw">ON</span> <span class="tbl">users</span>(<span class="col">email</span>);
+
+<span class="kw">SELECT</span> * <span class="kw">FROM</span> <span class="tbl">users</span> <span class="kw">WHERE</span> <span class="col">email</span> <span class="op">=</span> <span class="str">'alice@example.com'</span>;
+<span class="cmt">-- Without index: 10M rows scanned
+-- With index:    1 row found via B-tree in ~23 steps</span></pre>
+      </div>
+    </div>
+
+    <div class="scenario">
+      <span class="scenario-tag tag-use">Use Index</span>
+      <h4>Foreign Keys (JOIN Columns)</h4>
+      <div class="code-block">
+        <div class="code-header"><span class="code-lang">SQL</span><span class="code-label">Always index FK columns!</span></div>
+        <pre><span class="kw">CREATE TABLE</span> <span class="tbl">comments</span> (
+  <span class="col">id</span>      <span class="kw2">INT PRIMARY KEY</span>,
+  <span class="col">post_id</span> <span class="kw2">INT NOT NULL</span>,     <span class="cmt">-- FK</span>
+  <span class="col">user_id</span> <span class="kw2">INT NOT NULL</span>,     <span class="cmt">-- FK</span>
+  <span class="col">body</span>    <span class="kw2">TEXT</span>
+);
+
+<span class="cmt">-- Without these, every JOIN does a full scan on comments!</span>
+<span class="kw">CREATE INDEX</span> <span class="fn">idx_comments_post_id</span> <span class="kw">ON</span> <span class="tbl">comments</span>(<span class="col">post_id</span>);
+<span class="kw">CREATE INDEX</span> <span class="fn">idx_comments_user_id</span> <span class="kw">ON</span> <span class="tbl">comments</span>(<span class="col">user_id</span>);
+
+<span class="cmt">-- This JOIN is now fast:</span>
+<span class="kw">SELECT</span> c.body <span class="kw">FROM</span> <span class="tbl">comments</span> c
+<span class="kw">JOIN</span> <span class="tbl">posts</span> p <span class="kw">ON</span> c.<span class="col">post_id</span> <span class="op">=</span> p.<span class="col">id</span>
+<span class="kw">WHERE</span> p.<span class="col">id</span> <span class="op">=</span> <span class="num">1234</span>;</pre>
+      </div>
+    </div>
+
+    <div class="scenario">
+      <span class="scenario-tag tag-use">Use Index</span>
+      <h4>ORDER BY + LIMIT Queries</h4>
+      <div class="code-block">
+        <div class="code-header"><span class="code-lang">SQL</span><span class="code-label">Avoid sorting millions of rows</span></div>
+        <pre><span class="cmt">-- Without index: sort ALL orders, then take top 10 → expensive</span>
+<span class="cmt">-- With index: already sorted, just read top 10 → instant</span>
+<span class="kw">CREATE INDEX</span> <span class="fn">idx_orders_created_at</span> <span class="kw">ON</span> <span class="tbl">orders</span>(<span class="col">created_at</span> <span class="kw">DESC</span>);
+
+<span class="kw">SELECT</span> * <span class="kw">FROM</span> <span class="tbl">orders</span>
+<span class="kw">ORDER BY</span> <span class="col">created_at</span> <span class="kw">DESC</span>
+<span class="kw">LIMIT</span> <span class="num">10</span>;
+<span class="cmt">-- Index provides pre-sorted data → no filesort → O(1) effective</span></pre>
+      </div>
+    </div>
+
+    <div class="scenario">
+      <span class="scenario-tag tag-use">Use Index</span>
+      <h4>Range Queries</h4>
+      <div class="code-block">
+        <div class="code-header"><span class="code-lang">SQL</span><span class="code-label">BETWEEN, >, <, date ranges</span></div>
+        <pre><span class="kw">CREATE INDEX</span> <span class="fn">idx_orders_total</span> <span class="kw">ON</span> <span class="tbl">orders</span>(<span class="col">total</span>);
+
+<span class="cmt">-- Index enables fast range scan:</span>
+<span class="kw">SELECT</span> * <span class="kw">FROM</span> <span class="tbl">orders</span>
+<span class="kw">WHERE</span> <span class="col">total</span> <span class="kw">BETWEEN</span> <span class="num">100</span> <span class="kw">AND</span> <span class="num">500</span>;
+
+<span class="cmt">-- Same with dates:</span>
+<span class="kw">SELECT</span> * <span class="kw">FROM</span> <span class="tbl">orders</span>
+<span class="kw">WHERE</span> <span class="col">created_at</span> <span class="op">>=</span> <span class="str">'2024-01-01'</span>
+  <span class="kw">AND</span> <span class="col">created_at</span> <span class="op"><</span> <span class="str">'2024-02-01'</span>;
+<span class="cmt">-- B-tree finds start point, scans forward → very efficient</span></pre>
+      </div>
+    </div>
+  </section>
+
+  <!-- 6. PITFALLS -->
+  <section class="section" id="avoid">
+    <span class="section-num">06 · Pitfalls</span>
+    <h2>When Indexes <em>Don't Work</em></h2>
+
+    <div class="callout bad">
+      <div class="callout-title">⚠️ The Classic Mistakes</div>
+      <p>These patterns silently kill your index. The query runs, but the DB does a full scan anyway.</p>
+    </div>
+
+    <h3>1. Function on Indexed Column</h3>
+    <div class="code-block">
+      <div class="code-header"><span class="code-lang">SQL</span><span class="code-label">Index on created_at is IGNORED here</span></div>
+      <pre><span class="cmt">-- ❌ BAD: wrapping a column in a function defeats the index</span>
+<span class="kw">SELECT</span> * <span class="kw">FROM</span> <span class="tbl">orders</span>
+<span class="kw">WHERE</span> <span class="fn">YEAR</span>(<span class="col">created_at</span>) <span class="op">=</span> <span class="num">2024</span>;
+<span class="cmt">-- DB must evaluate YEAR() for every row → full scan!</span>
+
+<span class="cmt">-- ✅ GOOD: range query preserves index usage</span>
+<span class="kw">SELECT</span> * <span class="kw">FROM</span> <span class="tbl">orders</span>
+<span class="kw">WHERE</span> <span class="col">created_at</span> <span class="op">>=</span> <span class="str">'2024-01-01'</span>
+  <span class="kw">AND</span> <span class="col">created_at</span> <span class="op"><</span> <span class="str">'2025-01-01'</span>;
+<span class="cmt">-- Index on created_at is used ✓</span></pre>
+    </div>
+
+    <h3>2. Leading Wildcard in LIKE</h3>
+    <div class="code-block">
+      <div class="code-header"><span class="code-lang">SQL</span><span class="code-label">% at start = full scan</span></div>
+      <pre><span class="cmt">-- ❌ BAD: leading wildcard can't use B-tree</span>
+<span class="kw">SELECT</span> * <span class="kw">FROM</span> <span class="tbl">users</span> <span class="kw">WHERE</span> <span class="col">name</span> <span class="kw">LIKE</span> <span class="str">'%alice%'</span>; <span class="cmt">-- full scan</span>
+<span class="kw">SELECT</span> * <span class="kw">FROM</span> <span class="tbl">users</span> <span class="kw">WHERE</span> <span class="col">name</span> <span class="kw">LIKE</span> <span class="str">'%alice'</span>;  <span class="cmt">-- full scan</span>
+
+<span class="cmt">-- ✅ GOOD: trailing wildcard can use index</span>
+<span class="kw">SELECT</span> * <span class="kw">FROM</span> <span class="tbl">users</span> <span class="kw">WHERE</span> <span class="col">name</span> <span class="kw">LIKE</span> <span class="str">'alice%'</span>;  <span class="cmt">-- uses index!</span>
+
+<span class="cmt">-- ✅ BETTER: for %word% searches, use FULLTEXT index</span>
+<span class="kw">MATCH</span>(<span class="col">name</span>) <span class="kw">AGAINST</span>(<span class="str">'alice'</span>)</pre>
+    </div>
+
+    <h3>3. Implicit Type Conversion</h3>
+    <div class="code-block">
+      <div class="code-header"><span class="code-lang">SQL</span><span class="code-label">Mismatched types bypass indexes</span></div>
+      <pre><span class="cmt">-- Table: users.phone is VARCHAR(20), indexed</span>
+
+<span class="cmt">-- ❌ BAD: comparing VARCHAR to INT triggers implicit cast</span>
+<span class="kw">SELECT</span> * <span class="kw">FROM</span> <span class="tbl">users</span> <span class="kw">WHERE</span> <span class="col">phone</span> <span class="op">=</span> <span class="num">9876543210</span>; <span class="cmt">-- full scan!</span>
+
+<span class="cmt">-- ✅ GOOD: match the column type exactly</span>
+<span class="kw">SELECT</span> * <span class="kw">FROM</span> <span class="tbl">users</span> <span class="kw">WHERE</span> <span class="col">phone</span> <span class="op">=</span> <span class="str">'9876543210'</span>; <span class="cmt">-- index used!</span></pre>
+    </div>
+
+    <h3>4. OR Can Defeat Indexes</h3>
+    <div class="code-block">
+      <div class="code-header"><span class="code-lang">SQL</span><span class="code-label">OR often causes full scan</span></div>
+      <pre><span class="cmt">-- ❌ May not use index (DB-dependent)</span>
+<span class="kw">SELECT</span> * <span class="kw">FROM</span> <span class="tbl">users</span>
+<span class="kw">WHERE</span> <span class="col">email</span> <span class="op">=</span> <span class="str">'a@b.com'</span> <span class="kw">OR</span> <span class="col">phone</span> <span class="op">=</span> <span class="str">'123'</span>;
+
+<span class="cmt">-- ✅ BETTER: UNION to force each index path</span>
+<span class="kw">SELECT</span> * <span class="kw">FROM</span> <span class="tbl">users</span> <span class="kw">WHERE</span> <span class="col">email</span> <span class="op">=</span> <span class="str">'a@b.com'</span>
+<span class="kw">UNION</span>
+<span class="kw">SELECT</span> * <span class="kw">FROM</span> <span class="tbl">users</span> <span class="kw">WHERE</span> <span class="col">phone</span> <span class="op">=</span> <span class="str">'123'</span>;
+<span class="cmt">-- Each branch can independently use its index</span></pre>
+    </div>
+
+    <h3>5. Low Cardinality Columns</h3>
+    <div class="code-block">
+      <div class="code-header"><span class="code-lang">SQL</span><span class="code-label">Waste of an index</span></div>
+      <pre><span class="cmt">-- ❌ BAD: boolean/status with 2-3 values → index not selective</span>
+<span class="kw">CREATE INDEX</span> <span class="fn">idx_is_active</span> <span class="kw">ON</span> <span class="tbl">users</span>(<span class="col">is_active</span>);
+<span class="cmt">-- is_active is TRUE/FALSE → 50% of rows match → DB prefers full scan</span>
+
+<span class="cmt">-- ✅ BETTER: partial index (only index the minority case)</span>
+<span class="kw">CREATE INDEX</span> <span class="fn">idx_inactive_users</span> <span class="kw">ON</span> <span class="tbl">users</span>(<span class="col">id</span>)
+<span class="kw">WHERE</span> <span class="col">is_active</span> <span class="op">=</span> <span class="kw">FALSE</span>;
+<span class="cmt">-- Small index, only for the rare case (0.1% of users maybe)</span></pre>
+    </div>
+
+    <h3>6. NOT IN / NOT EQUAL</h3>
+    <div class="code-block">
+      <div class="code-header"><span class="code-lang">SQL</span><span class="code-label">Negations are hard to index</span></div>
+      <pre><span class="cmt">-- ❌ BAD: negations often lead to full scans</span>
+<span class="kw">SELECT</span> * <span class="kw">FROM</span> <span class="tbl">orders</span> <span class="kw">WHERE</span> <span class="col">status</span> <span class="op">!=</span> <span class="str">'cancelled'</span>;
+<span class="kw">SELECT</span> * <span class="kw">FROM</span> <span class="tbl">orders</span> <span class="kw">WHERE</span> <span class="col">status</span> <span class="kw">NOT IN</span> (<span class="str">'cancelled'</span>, <span class="str">'refunded'</span>);
+
+<span class="cmt">-- ✅ REWRITE: if the positive set is small</span>
+<span class="kw">SELECT</span> * <span class="kw">FROM</span> <span class="tbl">orders</span>
+<span class="kw">WHERE</span> <span class="col">status</span> <span class="kw">IN</span> (<span class="str">'pending'</span>, <span class="str">'processing'</span>, <span class="str">'shipped'</span>);</pre>
+    </div>
+  </section>
+
+  <!-- 7. COMPOSITE INDEXES -->
+  <section class="section" id="composite">
+    <span class="section-num">07 · Composite Indexes</span>
+    <h2>The <em>Column Order</em> Rule</h2>
+
+    <div class="analogy">
+      <p>A composite index on (last_name, first_name) is like a phone book. You can quickly find all "Smiths", or "Smith, Alice" — but you can't jump directly to all "Alice"s without scanning every entry.</p>
+    </div>
+
+    <p>A composite index on <strong>(A, B, C)</strong> can be used for queries on <strong>A</strong>, <strong>(A, B)</strong>, or <strong>(A, B, C)</strong> — but NOT on just <strong>B</strong> or <strong>C</strong> alone. This is the <strong>Left-Prefix Rule</strong>.</p>
+
+    <div class="code-block">
+      <div class="code-header"><span class="code-lang">SQL</span><span class="code-label">Left-Prefix Rule in detail</span></div>
+      <pre><span class="kw">CREATE INDEX</span> <span class="fn">idx_orders_composite</span>
+<span class="kw">ON</span> <span class="tbl">orders</span>(<span class="col">user_id</span>, <span class="col">status</span>, <span class="col">created_at</span>);
+
+<span class="cmt">-- ✅ Uses index (starts from left)</span>
+<span class="kw">WHERE</span> <span class="col">user_id</span> <span class="op">=</span> <span class="num">5</span>
+<span class="kw">WHERE</span> <span class="col">user_id</span> <span class="op">=</span> <span class="num">5</span> <span class="kw">AND</span> <span class="col">status</span> <span class="op">=</span> <span class="str">'pending'</span>
+<span class="kw">WHERE</span> <span class="col">user_id</span> <span class="op">=</span> <span class="num">5</span> <span class="kw">AND</span> <span class="col">status</span> <span class="op">=</span> <span class="str">'pending'</span> <span class="kw">AND</span> <span class="col">created_at</span> <span class="op">></span> <span class="str">'2024-01-01'</span>
+
+<span class="cmt">-- ❌ Does NOT use index (skips left columns)</span>
+<span class="kw">WHERE</span> <span class="col">status</span> <span class="op">=</span> <span class="str">'pending'</span>
+<span class="kw">WHERE</span> <span class="col">created_at</span> <span class="op">></span> <span class="str">'2024-01-01'</span>
+<span class="kw">WHERE</span> <span class="col">status</span> <span class="op">=</span> <span class="str">'pending'</span> <span class="kw">AND</span> <span class="col">created_at</span> <span class="op">></span> <span class="str">'2024-01-01'</span>
+
+<span class="cmt">-- ⚠️ Partial use: uses index on user_id only</span>
+<span class="kw">WHERE</span> <span class="col">user_id</span> <span class="op">=</span> <span class="num">5</span> <span class="kw">AND</span> <span class="col">created_at</span> <span class="op">></span> <span class="str">'2024-01-01'</span>
+<span class="cmt">-- status is skipped → index used for user_id, then filtered</span></pre>
+    </div>
+
+    <h3>Ordering Columns in Composite Index</h3>
+    <div class="code-block">
+      <div class="code-header"><span class="code-lang">SQL</span><span class="code-label">Equality columns first, range columns last</span></div>
+      <pre><span class="cmt">-- RULE: Put equality (=) columns before range (&gt;, &lt;, BETWEEN)</span>
+
+<span class="cmt">-- Query pattern:</span>
+<span class="kw">SELECT</span> * <span class="kw">FROM</span> <span class="tbl">orders</span>
+<span class="kw">WHERE</span> <span class="col">user_id</span> <span class="op">=</span> <span class="num">5</span>              <span class="cmt">-- equality</span>
+  <span class="kw">AND</span> <span class="col">status</span>  <span class="op">=</span> <span class="str">'shipped'</span>     <span class="cmt">-- equality</span>
+  <span class="kw">AND</span> <span class="col">created_at</span> <span class="op">></span> <span class="str">'2024-01-01'</span>; <span class="cmt">-- range</span>
+
+<span class="cmt">-- ✅ CORRECT order: equality cols first, range col last</span>
+<span class="kw">CREATE INDEX</span> <span class="fn">idx_good</span> <span class="kw">ON</span> <span class="tbl">orders</span>(<span class="col">user_id</span>, <span class="col">status</span>, <span class="col">created_at</span>);
+
+<span class="cmt">-- ❌ BAD order: range col in middle stops index use</span>
+<span class="kw">CREATE INDEX</span> <span class="fn">idx_bad</span> <span class="kw">ON</span> <span class="tbl">orders</span>(<span class="col">user_id</span>, <span class="col">created_at</span>, <span class="col">status</span>);
+<span class="cmt">-- Index used for (user_id, created_at) only — status not indexed</span></pre>
+    </div>
+
+    <h3>Real-World Composite Example: E-commerce</h3>
+    <div class="code-block">
+      <div class="code-header"><span class="code-lang">SQL</span><span class="code-label">Multi-tenant SaaS pattern</span></div>
+      <pre><span class="cmt">-- Common query in a multi-tenant app:</span>
+<span class="kw">SELECT</span> * <span class="kw">FROM</span> <span class="tbl">transactions</span>
+<span class="kw">WHERE</span> <span class="col">tenant_id</span> <span class="op">=</span> <span class="num">42</span>
+  <span class="kw">AND</span> <span class="col">account_id</span> <span class="op">=</span> <span class="num">1001</span>
+  <span class="kw">AND</span> <span class="col">txn_date</span> <span class="kw">BETWEEN</span> <span class="str">'2024-01-01'</span> <span class="kw">AND</span> <span class="str">'2024-03-31'</span>
+<span class="kw">ORDER BY</span> <span class="col">txn_date</span> <span class="kw">DESC</span>;
+
+<span class="cmt">-- Perfect composite index:</span>
+<span class="kw">CREATE INDEX</span> <span class="fn">idx_txn_tenant_account_date</span>
+<span class="kw">ON</span> <span class="tbl">transactions</span>(<span class="col">tenant_id</span>, <span class="col">account_id</span>, <span class="col">txn_date</span>);
+<span class="cmt">-- 1. Jumps to tenant 42
+-- 2. Within that, to account 1001
+-- 3. Within that, range scan on txn_date
+-- 4. Already sorted for ORDER BY — no filesort!</span></pre>
+    </div>
+  </section>
+
+  <!-- 8. COVERING INDEXES -->
+  <section class="section" id="covering">
+    <span class="section-num">08 · Covering Indexes</span>
+    <h2>The <em>Index-Only Scan</em></h2>
+
+    <div class="analogy">
+      <p>A covering index is like a cheat sheet with all the answers. The DB doesn't even need to open the main table — everything needed is right there in the index itself.</p>
+    </div>
+
+    <div class="code-block">
+      <div class="code-header"><span class="code-lang">SQL</span><span class="code-label">Eliminating the table lookup</span></div>
+      <pre><span class="cmt">-- Query:</span>
+<span class="kw">SELECT</span> <span class="col">user_id</span>, <span class="col">status</span>, <span class="col">total</span>
+<span class="kw">FROM</span> <span class="tbl">orders</span>
+<span class="kw">WHERE</span> <span class="col">user_id</span> <span class="op">=</span> <span class="num">42</span>
+  <span class="kw">AND</span> <span class="col">status</span> <span class="op">=</span> <span class="str">'completed'</span>;
+
+<span class="cmt">-- Non-covering index — two operations:</span>
+<span class="cmt">-- 1) Find rows in idx_orders_user_id → get row pointers</span>
+<span class="cmt">-- 2) Fetch each row from the TABLE to get 'total'</span>
+<span class="kw">CREATE INDEX</span> <span class="fn">idx_orders_user_id</span> <span class="kw">ON</span> <span class="tbl">orders</span>(<span class="col">user_id</span>);
+
+<span class="cmt">-- Covering index — one operation (index has everything!):</span>
+<span class="kw">CREATE INDEX</span> <span class="fn">idx_orders_covering</span>
+<span class="kw">ON</span> <span class="tbl">orders</span>(<span class="col">user_id</span>, <span class="col">status</span>, <span class="col">total</span>);
+<span class="cmt">-- All 3 SELECTed columns + WHERE columns are IN the index
+-- EXPLAIN shows: "Using index" (no table access!) ✓</span></pre>
+    </div>
+
+    <div class="code-block">
+      <div class="code-header"><span class="code-lang">PostgreSQL</span><span class="code-label">INCLUDE for non-key covering columns</span></div>
+      <pre><span class="cmt">-- PostgreSQL 11+: INCLUDE adds columns without affecting key ordering</span>
+<span class="kw">CREATE INDEX</span> <span class="fn">idx_orders_covering_pg</span>
+<span class="kw">ON</span> <span class="tbl">orders</span>(<span class="col">user_id</span>, <span class="col">status</span>)
+<span class="kw">INCLUDE</span> (<span class="col">total</span>, <span class="col">created_at</span>);
+<span class="cmt">-- user_id, status = searchable key columns
+-- total, created_at = included for retrieval only (not sorted)
+-- Index is slightly smaller than indexing all 4 as keys</span></pre>
+    </div>
+
+    <div class="callout warn">
+      <div class="callout-title">⚖️ Trade-off</div>
+      <p>Covering indexes are larger on disk. Don't cover 10 columns "just in case" — only add covering columns for high-frequency, performance-critical queries.</p>
+    </div>
+  </section>
+
+  <!-- 9. EXPLAIN -->
+  <section class="section" id="explain">
+    <span class="section-num">09 · Query Analysis</span>
+    <h2>Reading <em>EXPLAIN</em></h2>
+
+    <p>Use <strong>EXPLAIN</strong> (or <strong>EXPLAIN ANALYZE</strong> in PostgreSQL) to see whether your index is actually being used.</p>
+
+    <h3>MySQL EXPLAIN</h3>
+    <div class="code-block">
+      <div class="code-header"><span class="code-lang">SQL</span><span class="code-label">Analyze a query's execution plan</span></div>
+      <pre><span class="kw">EXPLAIN SELECT</span> * <span class="kw">FROM</span> <span class="tbl">orders</span>
+<span class="kw">WHERE</span> <span class="col">user_id</span> <span class="op">=</span> <span class="num">42</span> <span class="kw">AND</span> <span class="col">status</span> <span class="op">=</span> <span class="str">'pending'</span>;
+
+<span class="cmt">-- Output columns to focus on:
++----+-------+------+-----+-------------------+------+----------+------+------+-------------+
+| id | table | type | key | key_len           | rows | filtered | ref  | ...  | Extra       |
++----+-------+------+-----+-------------------+------+----------+------+------+-------------+
+| 1  |orders | ref  |idx_ | 4                 | 23   | 10.00    | const|      | Using where |
++----+-------+------+-----+-------------------+------+----------+------+------+-------------+
+
+type column meanings (best → worst):
+  system   → single row table (trivial)
+  const    → at most 1 row (PK or unique exact match)
+  eq_ref   → one row per join (PK join)
+  ref      → non-unique index scan ← GOOD
+  range    → index range scan ← GOOD
+  index    → full index scan ← OK
+  ALL      → FULL TABLE SCAN ← BAD 🔴</span></pre>
+    </div>
+
+    <h3>PostgreSQL EXPLAIN ANALYZE</h3>
+    <div class="code-block">
+      <div class="code-header"><span class="code-lang">PostgreSQL</span><span class="code-label">Actual execution stats</span></div>
+      <pre><span class="kw">EXPLAIN ANALYZE SELECT</span> * <span class="kw">FROM</span> <span class="tbl">orders</span>
+<span class="kw">WHERE</span> <span class="col">user_id</span> <span class="op">=</span> <span class="num">42</span>;
+
+<span class="cmt">-- Good output (index used):
+Index Scan using idx_orders_user_id on orders  (cost=0.43..8.45 rows=3 width=42)
+                                               (actual time=0.032..0.041 rows=3 loops=1)
+  Index Cond: (user_id = 42)
+Planning Time: 0.1 ms
+Execution Time: 0.1 ms  ← fast!
+
+-- Bad output (full scan):
+Seq Scan on orders  (cost=0.00..289432.00 rows=10000000 width=42)
+                    (actual time=0.010..4823.2 rows=10000000 loops=1)
+  Filter: (user_id = 42)
+  Rows Removed by Filter: 9999997
+Execution Time: 4823 ms  ← 4.8 seconds, terrible!</span></pre>
+    </div>
+
+    <h3>What to Look For</h3>
+    <table>
+      <tr><th>Signal</th><th>Meaning</th><th>Action</th></tr>
+      <tr><td><code>type = ALL</code></td><td class="no">Full table scan</td><td>Add an index on WHERE columns</td></tr>
+      <tr><td><code>type = index</code></td><td class="meh">Full index scan</td><td>May need composite or covering index</td></tr>
+      <tr><td><code>Using filesort</code></td><td class="meh">In-memory sort</td><td>Add index matching ORDER BY</td></tr>
+      <tr><td><code>Using temporary</code></td><td class="bad">Temp table created</td><td>Restructure query or add index</td></tr>
+      <tr><td><code>Using index</code></td><td class="yes">Index-only scan</td><td>Optimal — no table access!</td></tr>
+      <tr><td><code>rows</code> is high</td><td class="bad">Scanning many rows</td><td>Index may not be selective enough</td></tr>
+    </table>
+  </section>
+
+  <!-- 10. REAL WORLD -->
+  <section class="section" id="real">
+    <span class="section-num">10 · Real World</span>
+    <h2>Production <em>Use Cases</em></h2>
+
+    <h3>E-Commerce Platform</h3>
+    <div class="code-block">
+      <div class="code-header"><span class="code-lang">SQL</span><span class="code-label">Indexing strategy for an online store</span></div>
+      <pre><span class="kw">CREATE TABLE</span> <span class="tbl">products</span> (
+  <span class="col">id</span>          <span class="kw2">INT PRIMARY KEY</span>,          <span class="cmt">-- auto clustered index</span>
+  <span class="col">sku</span>         <span class="kw2">VARCHAR(50) UNIQUE</span>,        <span class="cmt">-- auto unique index</span>
+  <span class="col">category_id</span> <span class="kw2">INT</span>,
+  <span class="col">brand_id</span>    <span class="kw2">INT</span>,
+  <span class="col">price</span>       <span class="kw2">DECIMAL(10,2)</span>,
+  <span class="col">stock</span>       <span class="kw2">INT</span>,
+  <span class="col">is_active</span>   <span class="kw2">BOOLEAN DEFAULT TRUE</span>,
+  <span class="col">name</span>        <span class="kw2">VARCHAR(255)</span>,
+  <span class="col">description</span> <span class="kw2">TEXT</span>
+);
+
+<span class="cmt">-- 1. Browsing by category + sorting by price (most common)</span>
+<span class="kw">CREATE INDEX</span> <span class="fn">idx_products_cat_price</span>
+  <span class="kw">ON</span> <span class="tbl">products</span>(<span class="col">category_id</span>, <span class="col">price</span>);
+
+<span class="cmt">-- 2. Brand page with active filter</span>
+<span class="kw">CREATE INDEX</span> <span class="fn">idx_products_brand_active</span>
+  <span class="kw">ON</span> <span class="tbl">products</span>(<span class="col">brand_id</span>, <span class="col">is_active</span>);
+
+<span class="cmt">-- 3. Price range filter (common in search)</span>
+<span class="kw">CREATE INDEX</span> <span class="fn">idx_products_price</span>
+  <span class="kw">ON</span> <span class="tbl">products</span>(<span class="col">price</span>);
+
+<span class="cmt">-- 4. Full-text search on name/description</span>
+<span class="kw">ALTER TABLE</span> <span class="tbl">products</span>
+  <span class="kw">ADD FULLTEXT</span> <span class="fn">ft_products_search</span>(<span class="col">name</span>, <span class="col">description</span>);
+
+<span class="cmt">-- 5. Low-stock alerts (partial index — only relevant rows)</span>
+<span class="kw">CREATE INDEX</span> <span class="fn">idx_low_stock</span> <span class="kw">ON</span> <span class="tbl">products</span>(<span class="col">stock</span>)
+  <span class="kw">WHERE</span> <span class="col">stock</span> <span class="op"><</span> <span class="num">10</span> <span class="kw">AND</span> <span class="col">is_active</span> <span class="op">=</span> <span class="kw">TRUE</span>;</pre>
+    </div>
+
+    <h3>Social Media Feed</h3>
+    <div class="code-block">
+      <div class="code-header"><span class="code-lang">SQL</span><span class="code-label">Optimizing a news feed query</span></div>
+      <pre><span class="cmt">-- Feed query: get latest posts from followed users</span>
+<span class="kw">SELECT</span> p.id, p.content, p.created_at, u.name
+<span class="kw">FROM</span> <span class="tbl">posts</span> p
+<span class="kw">JOIN</span> <span class="tbl">follows</span> f <span class="kw">ON</span> p.<span class="col">user_id</span> <span class="op">=</span> f.<span class="col">followed_id</span>
+<span class="kw">JOIN</span> <span class="tbl">users</span> u <span class="kw">ON</span> p.<span class="col">user_id</span> <span class="op">=</span> u.<span class="col">id</span>
+<span class="kw">WHERE</span> f.<span class="col">follower_id</span> <span class="op">=</span> <span class="num">123</span>
+<span class="kw">ORDER BY</span> p.<span class="col">created_at</span> <span class="kw">DESC</span>
+<span class="kw">LIMIT</span> <span class="num">20</span>;
+
+<span class="cmt">-- Indexes needed:</span>
+<span class="kw">CREATE INDEX</span> <span class="fn">idx_follows_follower</span>
+  <span class="kw">ON</span> <span class="tbl">follows</span>(<span class="col">follower_id</span>, <span class="col">followed_id</span>);   <span class="cmt">-- join + WHERE</span>
+
+<span class="kw">CREATE INDEX</span> <span class="fn">idx_posts_user_created</span>
+  <span class="kw">ON</span> <span class="tbl">posts</span>(<span class="col">user_id</span>, <span class="col">created_at</span> <span class="kw">DESC</span>);    <span class="cmt">-- join + ORDER BY</span></pre>
+    </div>
+
+    <h3>Analytics / Reporting</h3>
+    <div class="code-block">
+      <div class="code-header"><span class="code-lang">SQL</span><span class="code-label">Aggregation with indexes</span></div>
+      <pre><span class="cmt">-- Monthly revenue report</span>
+<span class="kw">SELECT</span>
+  <span class="fn">DATE_FORMAT</span>(<span class="col">created_at</span>, <span class="str">'%Y-%m'</span>) <span class="kw">AS</span> month,
+  <span class="fn">COUNT</span>(*) <span class="kw">AS</span> order_count,
+  <span class="fn">SUM</span>(<span class="col">total</span>) <span class="kw">AS</span> revenue
+<span class="kw">FROM</span> <span class="tbl">orders</span>
+<span class="kw">WHERE</span> <span class="col">created_at</span> <span class="kw">BETWEEN</span> <span class="str">'2024-01-01'</span> <span class="kw">AND</span> <span class="str">'2024-12-31'</span>
+  <span class="kw">AND</span> <span class="col">status</span> <span class="op">=</span> <span class="str">'completed'</span>
+<span class="kw">GROUP BY</span> month;
+
+<span class="cmt">-- Covering index for this exact report:</span>
+<span class="kw">CREATE INDEX</span> <span class="fn">idx_orders_report_covering</span>
+  <span class="kw">ON</span> <span class="tbl">orders</span>(<span class="col">status</span>, <span class="col">created_at</span>)
+  <span class="kw">INCLUDE</span> (<span class="col">total</span>);  <span class="cmt">-- PostgreSQL syntax
+-- status (=) first, created_at (range) second, total included
+-- Entire query served from index — no table touch!</span></pre>
+    </div>
+
+    <h3>Benefits & Trade-offs Summary</h3>
+    <div class="procon">
+      <div class="pro-box">
+        <h5>✅ Benefits</h5>
+        <ul>
+          <li>Dramatically faster SELECT queries</li>
+          <li>Enables efficient JOINs on large tables</li>
+          <li>Eliminates expensive filesorts (ORDER BY)</li>
+          <li>Enforces uniqueness (UNIQUE index)</li>
+          <li>Reduces I/O — fewer disk reads</li>
+          <li>Covering indexes avoid table access entirely</li>
+        </ul>
+      </div>
+      <div class="con-box">
+        <h5>❌ Costs & Risks</h5>
+        <ul>
+          <li>Extra disk space for each index</li>
+          <li>Slower INSERT, UPDATE, DELETE (index must update)</li>
+          <li>DB must choose the right index (can be wrong)</li>
+          <li>Too many indexes → optimizer confusion</li>
+          <li>Over-indexing write-heavy tables kills throughput</li>
+          <li>Unused indexes waste space and slow writes</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- 11. INTERVIEW Q&A -->
+  <section class="section" id="interview">
+    <span class="section-num">11 · Interview Prep</span>
+    <h2>Interview <em>Questions</em></h2>
+
+    <div class="qa-block">
+      <div class="question">What is an index in SQL and why do we use it?</div>
+      <div class="answer">An index is a separate data structure (usually a B-tree) that stores sorted column values with pointers to the actual rows. We use indexes to speed up data retrieval — a query that would scan millions of rows becomes a logarithmic-time lookup. The trade-off is extra storage and slower write operations, since the index must be updated on every INSERT, UPDATE, or DELETE.</div>
+    </div>
+
+    <div class="qa-block">
+      <div class="question">What's the difference between a clustered and non-clustered index?</div>
+      <div class="answer">A <strong>clustered index</strong> determines the physical order of data on disk — rows are stored sorted by the indexed column. There can only be one per table (usually the primary key). A <strong>non-clustered index</strong> is a separate structure with pointers back to the heap/data pages. You can have many non-clustered indexes per table. In MySQL InnoDB, the primary key is always clustered; all other indexes are non-clustered and store the primary key value as their row pointer.</div>
+    </div>
+
+    <div class="qa-block">
+      <div class="question">Explain the left-prefix rule for composite indexes.</div>
+      <div class="answer">For a composite index on (A, B, C), the DB can use the index for queries filtering on A alone, A+B together, or A+B+C. But it cannot efficiently use the index for queries on B alone, C alone, or B+C — because the B-tree is sorted first by A. Think of it like a phone book sorted by (last_name, first_name): you can find all Smiths, or Smith+Alice — but not all "Alice"s without scanning every entry.</div>
+    </div>
+
+    <div class="qa-block">
+      <div class="question">What is a covering index?</div>
+      <div class="answer">A covering index is one where all the columns needed by a query (both in SELECT and WHERE) are present in the index itself — so the database can answer the query entirely from the index without touching the main table. In EXPLAIN output, you'll see "Using index". This is the highest level of index optimization because it eliminates the expensive random I/O of fetching actual rows.</div>
+    </div>
+
+    <div class="qa-block">
+      <div class="question">When would you NOT use an index?</div>
+      <div class="answer">Several cases: (1) <strong>Low-cardinality columns</strong> like boolean flags — if 50% of rows match, a full scan is often cheaper. (2) <strong>Small tables</strong> where a full scan is trivial. (3) <strong>Write-heavy tables</strong> like logging tables where indexes slow down every INSERT. (4) Columns rarely used in WHERE/JOIN/ORDER BY clauses. (5) When the column has many NULLs and you rarely query non-NULL values.</div>
+    </div>
+
+    <div class="qa-block">
+      <div class="question">List 4 situations where an index won't be used.</div>
+      <div class="answer">(1) Using a function on the indexed column: <code>WHERE YEAR(date) = 2024</code>. (2) A leading wildcard in LIKE: <code>WHERE name LIKE '%alice'</code>. (3) Implicit type conversion: comparing a VARCHAR column to an integer literal. (4) Negations like <code>NOT IN</code> or <code>!=</code> — the DB often determines a full scan is cheaper. Also: (5) Low selectivity — if the query matches >20-30% of rows, the query planner may skip the index entirely.</div>
+    </div>
+
+    <div class="qa-block">
+      <div class="question">How does adding an index affect write performance?</div>
+      <div class="answer">Every index on a table must be updated on INSERT, UPDATE, and DELETE. A table with 5 indexes requires 6 write operations for every row insert (1 data + 5 index updates). This makes indexes costly on write-heavy tables. Strategies: use partial indexes (index only relevant subsets), drop unused indexes, or use INSERT IGNORE batching. On bulk loads, it's often faster to drop indexes first, load data, then rebuild them.</div>
+    </div>
+
+    <div class="qa-block">
+      <div class="question">What is a partial index and when would you use one?</div>
+      <div class="answer">A partial index (PostgreSQL) only indexes rows that satisfy a WHERE condition in the index definition — e.g., <code>CREATE INDEX ON orders(created_at) WHERE status = 'pending'</code>. Use it when: (1) most queries target a minority of rows (like only active or pending records), (2) the index would otherwise be large and most of it unused, (3) you want to enforce a conditional uniqueness constraint (e.g., unique email among active users only).</div>
+    </div>
+
+    <div class="qa-block">
+      <div class="question">How do you check if a query is using an index?</div>
+      <div class="answer">Use <code>EXPLAIN</code> (MySQL) or <code>EXPLAIN ANALYZE</code> (PostgreSQL). In MySQL, look at the <code>type</code> column — <code>ref</code>, <code>range</code>, or <code>const</code> means an index is used; <code>ALL</code> means a full table scan. The <code>key</code> column shows which index was chosen, and <code>rows</code> shows estimated rows scanned. In PostgreSQL, look for "Index Scan" or "Index Only Scan" (best) vs "Seq Scan" (worst).</div>
+    </div>
+
+    <div class="qa-block">
+      <div class="question">What is index cardinality and why does it matter?</div>
+      <div class="answer">Cardinality is the number of unique values in an indexed column. High cardinality (e.g., email, UUID) = very selective index = few rows returned per lookup = very efficient. Low cardinality (e.g., boolean, gender, status) = less selective = many rows returned per lookup = index may be skipped. The query optimizer uses cardinality statistics to decide whether to use an index — if an index returns 40% of rows, a sequential scan is often faster.</div>
+    </div>
+
+    <div class="qa-block">
+      <div class="question">Explain the difference between B-Tree and Hash indexes.</div>
+      <div class="answer">A <strong>B-Tree index</strong> stores keys in a sorted balanced tree structure — it supports equality (<code>=</code>), range (<code>&gt;</code>, <code>&lt;</code>, <code>BETWEEN</code>), prefix (<code>LIKE 'abc%'</code>), and ORDER BY operations. It's the default and most versatile. A <strong>Hash index</strong> uses a hash function — it only supports exact equality lookups (<code>=</code>) in O(1) time, but cannot do range queries or sorting. Use Hash for simple key-value lookup tables; B-Tree for everything else.</div>
+    </div>
+  </section>
+
+  <!-- 12. CHEATSHEET -->
+  <section class="section" id="cheatsheet">
+    <span class="section-num">12 · Quick Reference</span>
+    <h2>The <em>Cheatsheet</em></h2>
+
+    <div class="cheat-grid">
+      <div class="cheat-card">
+        <h5>✅ Always Index These</h5>
+        <ul>
+          <li><span>PRIMARY KEY</span> — auto-created</li>
+          <li><span>FOREIGN KEYS</span> — join performance</li>
+          <li><span>Unique constraints</span> — auto-created</li>
+          <li><span>Frequent WHERE columns</span> — high cardinality</li>
+          <li><span>ORDER BY + LIMIT columns</span> — avoid filesort</li>
+          <li><span>JOIN ON columns</span> — both sides</li>
+        </ul>
+      </div>
+      <div class="cheat-card">
+        <h5>❌ Avoid Indexing These</h5>
+        <ul>
+          <li><span>Boolean / status</span> — low cardinality</li>
+          <li><span>Rarely queried columns</span> — waste</li>
+          <li><span>Large text blobs</span> — use fulltext</li>
+          <li><span>Write-only tables</span> — overhead</li>
+          <li><span>Columns in functions</span> — index ignored</li>
+          <li><span>Tiny tables</span> — full scan faster</li>
+        </ul>
+      </div>
+      <div class="cheat-card">
+        <h5>🧩 Composite Index Rules</h5>
+        <ul>
+          <li><span>Equality (=) columns</span> go first</li>
+          <li><span>Range (&gt;, &lt;, BETWEEN)</span> go last</li>
+          <li><span>ORDER BY column</span> goes last if possible</li>
+          <li><span>Left-prefix rule</span> must be satisfied</li>
+          <li><span>Most selective</span> column usually first</li>
+          <li><span>Max ~3-4 columns</span> per index</li>
+        </ul>
+      </div>
+      <div class="cheat-card">
+        <h5>🔍 EXPLAIN Signals</h5>
+        <ul>
+          <li><span>type=ALL</span> → add an index</li>
+          <li><span>Using filesort</span> → index ORDER BY</li>
+          <li><span>Using temporary</span> → restructure query</li>
+          <li><span>Using index</span> → covering index (best!)</li>
+          <li><span>rows very high</span> → index not selective</li>
+          <li><span>key=NULL</span> → no index used</li>
+        </ul>
+      </div>
+      <div class="cheat-card">
+        <h5>💡 Index Killers</h5>
+        <ul>
+          <li><span>YEAR(date_col)</span> → use date range</li>
+          <li><span>LIKE '%word'</span> → use FULLTEXT</li>
+          <li><span>col = 123</span> vs VARCHAR → type mismatch</li>
+          <li><span>NOT IN / !=</span> → rewrite with IN</li>
+          <li><span>OR on different cols</span> → use UNION</li>
+          <li><span>LOWER(col) = 'x'</span> → use collation</li>
+        </ul>
+      </div>
+      <div class="cheat-card">
+        <h5>⚡ Pro Tips</h5>
+        <ul>
+          <li><span>CONCURRENTLY</span> — no lock in Postgres</li>
+          <li><span>Partial indexes</span> — subset of rows</li>
+          <li><span>INCLUDE</span> — covering without key</li>
+          <li><span>Monitor unused indexes</span> — drop them</li>
+          <li><span>Rebuild after bulk load</span> — faster</li>
+          <li><span>ANALYZE / UPDATE STATS</span> — keep fresh</li>
+        </ul>
+      </div>
+    </div>
+
+    <hr class="divider">
+
+    <h3>Quick Syntax Reference</h3>
+    <div class="code-block">
+      <div class="code-header"><span class="code-lang">SQL</span><span class="code-label">All key commands at a glance</span></div>
+      <pre><span class="cmt">-- CREATE</span>
+<span class="kw">CREATE INDEX</span> <span class="fn">idx_name</span> <span class="kw">ON</span> <span class="tbl">table</span>(<span class="col">col</span>);
+<span class="kw">CREATE UNIQUE INDEX</span> <span class="fn">idx_name</span> <span class="kw">ON</span> <span class="tbl">table</span>(<span class="col">col</span>);
+<span class="kw">CREATE INDEX</span> <span class="fn">idx_name</span> <span class="kw">ON</span> <span class="tbl">table</span>(<span class="col">col1</span>, <span class="col">col2</span>);        <span class="cmt">-- composite</span>
+<span class="kw">CREATE INDEX CONCURRENTLY</span> <span class="fn">idx_name</span> <span class="kw">ON</span> <span class="tbl">table</span>(<span class="col">col</span>); <span class="cmt">-- no lock (PG)</span>
+<span class="kw">CREATE INDEX</span> <span class="fn">idx_name</span> <span class="kw">ON</span> <span class="tbl">table</span>(<span class="col">col</span>) <span class="kw">WHERE</span> cond;   <span class="cmt">-- partial (PG)</span>
+<span class="kw">CREATE INDEX</span> <span class="fn">idx_name</span> <span class="kw">ON</span> <span class="tbl">table</span>(<span class="col">col</span>) <span class="kw">INCLUDE</span>(<span class="col">col2</span>); <span class="cmt">-- covering (PG)</span>
+
+<span class="cmt">-- DROP</span>
+<span class="kw">DROP INDEX</span> <span class="fn">idx_name</span> <span class="kw">ON</span> <span class="tbl">table</span>;          <span class="cmt">-- MySQL</span>
+<span class="kw">DROP INDEX IF EXISTS</span> <span class="fn">idx_name</span>;         <span class="cmt">-- PostgreSQL</span>
+
+<span class="cmt">-- ANALYZE</span>
+<span class="kw">EXPLAIN SELECT</span> * <span class="kw">FROM</span> <span class="tbl">t</span> <span class="kw">WHERE</span> ...;     <span class="cmt">-- execution plan</span>
+<span class="kw">EXPLAIN ANALYZE SELECT</span> * <span class="kw">FROM</span> <span class="tbl">t</span> ...;  <span class="cmt">-- + actual timing (PG)</span>
+<span class="kw">SHOW INDEXES FROM</span> <span class="tbl">table</span>;              <span class="cmt">-- list indexes (MySQL)</span>
+<span class="kw">ANALYZE TABLE</span> <span class="tbl">table</span>;                  <span class="cmt">-- refresh statistics (MySQL)</span></pre>
+    </div>
+  </section>
+
+</div>
+
+<footer>
+  <p>Made for developers, engineers &amp; interview candidates ·  <strong>SQL Indexes — The Complete Guide</strong></p>
+  <p style="margin-top: 8px; font-size: 11px; color: #475569;">Cover all topics: What & Why · How B-Trees Work · 8 Index Types · Syntax · When to Use · Pitfalls · Composite · Covering · EXPLAIN · Real-World Cases · 11 Interview Q&As · Cheatsheet</p>
+</footer>
+
+</body>
+</html>
